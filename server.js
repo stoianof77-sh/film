@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -8,26 +9,20 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-// Memória temporária do servidor
-let estadoVideo = {
-    url: "",
-    tempo: 0,
-    estaTocando: false
-};
+let estadoVideo = { url: "", tempo: 0 };
 
 io.on('connection', (socket) => {
-    // Envia o estado atual para quem acabou de ligar a página
+    // Envia o que está passando agora para quem acabou de entrar
     socket.emit('sincronizarEntrada', estadoVideo);
 
     socket.on('mudarVideo', (dados) => {
-        estadoVideo = { ...estadoVideo, ...dados };
-        io.emit('trocarSrcParaTodos', estadoVideo);
+        estadoVideo = dados;
+        io.emit('trocarVideoTodos', estadoVideo);
     });
 
-    // Atualiza o tempo global periodicamente enviado pelo "mestre"
-    socket.on('atualizarTempoGlobal', (tempo) => {
-        estadoVideo.tempo = tempo;
-    });
+    // Atualiza o tempo global para novos usuários
+    socket.on('tempoAtual', (t) => { estadoVideo.tempo = t; });
 });
 
-server.listen(3000, () => console.log("🚀 Rodando em http://localhost:3000"));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`🚀 Rodando em http://localhost:${PORT}`));
