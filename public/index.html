@@ -1,62 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-    <title>Sincronizador de Vídeo PRO</title>
+    <meta charset="UTF-8">
+    <title>Painel de Controle de Vídeo</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { background: #111; color: white; font-family: sans-serif; text-align: center; }
-        video { border: 3px solid #555; border-radius: 8px; max-width: 90%; }
-        .controles { background: #222; padding: 20px; margin-bottom: 20px; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }
+        iframe { border: 5px solid #333; border-radius: 10px; width: 800px; height: 450px; background: #000; }
+        input { padding: 10px; width: 400px; border-radius: 5px; border: none; }
+        button { padding: 10px 20px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="controles">
-        <input type="text" id="inputUrl" placeholder="URL do vídeo .mp4" style="padding: 8px; width: 300px;">
-        <button onclick="enviarNovoVideo()">Transmitir e Sincronizar</button>
-    </div>
+    <div class="container">
+        <h1>Controle Remoto via Socket</h1>
+        
+        <iframe src="tv.html" id="minhaTV"></iframe>
 
-    <video id="videoPlayer" width="800" controls muted autoplay></video>
+        <div class="controles">
+            <input type="text" id="urlVideo" placeholder="URL do vídeo (.mp4)">
+            <button onclick="transmitir()">Transmitir no Iframe de Todos</button>
+        </div>
+    </div>
 
     <script>
         const socket = io();
-        const video = document.getElementById('videoPlayer');
-        const inputUrl = document.getElementById('inputUrl');
 
-        // 1. QUEM MANDA: Envia URL e o tempo 0
-        function enviarNovoVideo() {
-            const url = inputUrl.value;
-            if(url) {
-                socket.emit('mudarVideo', { url: url, tempo: 0, estaTocando: true });
+        function transmitir() {
+            const url = document.getElementById('urlVideo').value;
+            if (url) {
+                // Envia para o servidor, que vai avisar a 'tv.html' dentro de todos os iframes
+                socket.emit('mudarVideo', { url: url, tempo: 0 });
             }
         }
-
-        // 2. SINCRONIZAÇÃO CONSTANTE: Se tu és o "mestre", envia o teu tempo para o servidor
-        video.ontimeupdate = () => {
-            // Só envia se o vídeo estiver a dar play para não sobrecarregar
-            if (!video.paused) {
-                socket.emit('atualizarTempoGlobal', video.currentTime);
-            }
-        };
-
-        // 3. QUEM RECEBE: Troca o vídeo e ajusta o tempo
-        socket.on('trocarSrcParaTodos', (dados) => {
-            if (video.src !== dados.url) {
-                video.src = dados.url;
-                video.load();
-            }
-            video.currentTime = dados.tempo;
-            video.play();
-        });
-
-        // 4. PARA QUEM CHEGOU AGORA: Recebe o que está a dar no momento
-        socket.on('sincronizarEntrada', (dados) => {
-            if (dados.url) {
-                video.src = dados.url;
-                video.currentTime = dados.tempo;
-                video.play();
-            }
-        });
     </script>
 </body>
 </html>
