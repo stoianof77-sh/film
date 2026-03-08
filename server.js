@@ -8,11 +8,25 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
+// Memória temporária do servidor
+let estadoVideo = {
+    url: "",
+    tempo: 0,
+    estaTocando: false
+};
+
 io.on('connection', (socket) => {
-    // Quando alguém envia um novo link de vídeo
-    socket.on('mudarVideo', (url) => {
-        // Envia para TODOS os conectados
-        io.emit('trocarSrcParaTodos', url);
+    // Envia o estado atual para quem acabou de ligar a página
+    socket.emit('sincronizarEntrada', estadoVideo);
+
+    socket.on('mudarVideo', (dados) => {
+        estadoVideo = { ...estadoVideo, ...dados };
+        io.emit('trocarSrcParaTodos', estadoVideo);
+    });
+
+    // Atualiza o tempo global periodicamente enviado pelo "mestre"
+    socket.on('atualizarTempoGlobal', (tempo) => {
+        estadoVideo.tempo = tempo;
     });
 });
 
