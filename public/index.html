@@ -2,57 +2,48 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Stream via Iframe & Socket</title>
+    <title>Injetor de Filmes - Socket</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { background: #111; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
-        .painel { margin-bottom: 20px; background: #222; padding: 15px; border-radius: 8px; }
-        input { padding: 10px; width: 300px; border-radius: 4px; border: none; }
-        button { padding: 10px 20px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px; }
-        iframe { width: 800px; height: 450px; border: 2px solid #444; background: #000; border-radius: 8px; }
+        body { background: #121212; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+        .painel { background: #1e1e1e; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        textarea { width: 80%; height: 80px; background: #000; color: #0f0; border: 1px solid #333; padding: 10px; font-family: monospace; }
+        button { display: block; margin: 10px auto; padding: 10px 30px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #areaDoVideo { width: 100%; max-width: 800px; margin: 0 auto; background: #000; min-height: 450px; border: 2px dashed #444; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
     <div class="painel">
-        <input type="text" id="urlVideo" placeholder="URL do vídeo (.mp4)">
-        <button onclick="transmitir()">Transmitir para Todos</button>
+        <h3>Painel de Controle</h3>
+        <p>Cole o código de incorporação (Iframe) abaixo:</p>
+        <textarea id="inputEmbed" placeholder="Cole o <iframe... daqui"></textarea>
+        <button onclick="transmitir()">Transmitir Filme para Todos</button>
     </div>
 
-    <iframe id="telaVideo" srcdoc="
-        <html>
-            <body style='margin:0; background:black; display:flex; align-items:center; justify-content:center;'>
-                <video id='v' controls autoplay muted style='width:100%; height:100%;'></video>
-                <script src='/socket.io/socket.io.js'></script>
-                <script>
-                    const s = io();
-                    const v = document.getElementById('v');
-                    
-                    s.on('trocarVideoTodos', (d) => {
-                        if(v.src !== d.url) v.src = d.url;
-                        v.currentTime = d.tempo;
-                        v.play();
-                    });
-
-                    s.on('sincronizarEntrada', (d) => {
-                        if(d.url) { v.src = d.url; v.currentTime = d.tempo; v.play(); }
-                    });
-
-                    // Avisa o servidor o tempo atual do vídeo
-                    v.ontimeupdate = () => s.emit('tempoAtual', v.currentTime);
-                </script>
-            </body>
-        </html>
-    "></iframe>
+    <div id="areaDoVideo">
+        <p id="aviso">Aguardando início da transmissão...</p>
+    </div>
 
     <script>
         const socket = io();
+        const area = document.getElementById('areaDoVideo');
+
         function transmitir() {
-            const url = document.getElementById('urlVideo').value;
-            if(url) {
-                socket.emit('mudarVideo', { url: url, tempo: 0 });
+            const codigo = document.getElementById('inputEmbed').value;
+            if (codigo.trim() !== "") {
+                socket.emit('enviarEmbed', codigo);
             }
         }
+
+        // Quando o servidor manda o novo conteúdo
+        socket.on('atualizarTela', (html) => {
+            if (html) {
+                area.innerHTML = html; // Injeta o código HTML/Iframe direto na tela
+            } else {
+                area.innerHTML = "<p>Nenhum filme passando agora.</p>";
+            }
+        });
     </script>
 </body>
 </html>
