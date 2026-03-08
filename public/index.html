@@ -1,30 +1,46 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Jogo NFC Socket</title>
+    <title>Transmissor de SRC</title>
     <script src="/socket.io/socket.io.js"></script>
-    <style>
-        body { font-family: sans-serif; text-align: center; background: #222; color: white; }
-        #status { color: #0f0; margin: 20px; }
-    </style>
 </head>
-<body>
-    <h1>Tabuleiro Online</h1>
-    <div id="status">Conectando...</div>
-    <div id="display">Aguardando jogada...</div>
+<body style="background: #111; color: white; text-align: center;">
+
+    <h2>Transmissor de Vídeo via Socket</h2>
+    
+    <div style="margin-bottom: 20px; border: 1px solid #444; padding: 10px;">
+        <input type="text" id="inputUrl" placeholder="Cole a URL do .mp4 aqui" style="width: 300px;">
+        <button onclick="enviarNovoVideo()">Transmitir para Todos</button>
+    </div>
+
+    <hr>
+
+    <video id="videoPlayer" width="640" controls autoplay muted style="border: 2px solid gold;">
+        <source id="videoSource" src="" type="video/mp4">
+        Seu navegador não suporta vídeo.
+    </video>
 
     <script>
         const socket = io();
-        const statusDiv = document.getElementById("status");
-        const display = document.getElementById("display");
+        const video = document.getElementById('videoPlayer');
+        const inputUrl = document.getElementById('inputUrl');
 
-        socket.on("connect", () => {
-            statusDiv.innerText = "✅ Conectado ao Servidor! ID: " + socket.id;
-        });
+        // 1. FUNÇÃO PARA QUEM MANDA
+        function enviarNovoVideo() {
+            const url = inputUrl.value;
+            if(url) {
+                socket.emit('mudarVideo', url);
+            }
+        }
 
-        socket.on("atualizarDados", (dados) => {
-            display.innerHTML = `<h3>Última Jogada:</h3><pre>${JSON.stringify(dados, null, 2)}</pre>`;
+        // 2. FUNÇÃO PARA QUEM RECEBE (INCLUINDO VOCÊ)
+        socket.on('trocarSrcParaTodos', (novaUrl) => {
+            console.log("Trocando vídeo para: " + novaUrl);
+            
+            // Troca o SRC e recarrega o player
+            video.src = novaUrl;
+            video.load(); // Importante para o navegador ler o novo arquivo
+            video.play();
         });
     </script>
 </body>
