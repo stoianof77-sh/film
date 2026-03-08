@@ -1,46 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Transmissor de SRC</title>
+    <title>Sincronizador de Vídeo PRO</title>
     <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { background: #111; color: white; font-family: sans-serif; text-align: center; }
+        video { border: 3px solid #555; border-radius: 8px; max-width: 90%; }
+        .controles { background: #222; padding: 20px; margin-bottom: 20px; }
+    </style>
 </head>
-<body style="background: #111; color: white; text-align: center;">
+<body>
 
-    <h2>Transmissor de Vídeo via Socket</h2>
-    
-    <div style="margin-bottom: 20px; border: 1px solid #444; padding: 10px;">
-        <input type="text" id="inputUrl" placeholder="Cole a URL do .mp4 aqui" style="width: 300px;">
-        <button onclick="enviarNovoVideo()">Transmitir para Todos</button>
+    <div class="controles">
+        <input type="text" id="inputUrl" placeholder="URL do vídeo .mp4" style="padding: 8px; width: 300px;">
+        <button onclick="enviarNovoVideo()">Transmitir e Sincronizar</button>
     </div>
 
-    <hr>
-
-    <video id="videoPlayer" width="640" controls autoplay muted style="border: 2px solid gold;">
-        <source id="videoSource" src="" type="video/mp4">
-        Seu navegador não suporta vídeo.
-    </video>
+    <video id="videoPlayer" width="800" controls muted autoplay></video>
 
     <script>
         const socket = io();
         const video = document.getElementById('videoPlayer');
         const inputUrl = document.getElementById('inputUrl');
 
-        // 1. FUNÇÃO PARA QUEM MANDA
+        // 1. QUEM MANDA: Envia URL e o tempo 0
         function enviarNovoVideo() {
             const url = inputUrl.value;
             if(url) {
-                socket.emit('mudarVideo', url);
+                socket.emit('mudarVideo', { url: url, tempo: 0, estaTocando: true });
             }
         }
 
-        // 2. FUNÇÃO PARA QUEM RECEBE (INCLUINDO VOCÊ)
-        socket.on('trocarSrcParaTodos', (novaUrl) => {
-            console.log("Trocando vídeo para: " + novaUrl);
-            
-            // Troca o SRC e recarrega o player
-            video.src = novaUrl;
-            video.load(); // Importante para o navegador ler o novo arquivo
+        // 2. SINCRONIZAÇÃO CONSTANTE: Se tu és o "mestre", envia o teu tempo para o servidor
+        video.ontimeupdate = () => {
+            // Só envia se o vídeo estiver a dar play para não sobrecarregar
+            if (!video.paused) {
+                socket.emit('atualizarTempoGlobal', video.currentTime);
+            }
+        };
+
+        // 3. QUEM RECEBE: Troca o vídeo e ajusta o tempo
+        socket.on('trocarSrcParaTodos', (dados) => {
+            if (video.src !== dados.url) {
+                video.src = dados.url;
+                video.load();
+            }
+            video.currentTime = dados.tempo;
             video.play();
+        });
+
+        // 4. PARA QUEM CHEGOU AGORA: Recebe o que está a dar no momento
+        socket.on('sincronizarEntrada', (dados) => {
+            if (dados.url) {
+                video.src = dados.url;
+                video.currentTime = dados.tempo;
+                video.play();
+            }
         });
     </script>
 </body>
